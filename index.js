@@ -91,7 +91,6 @@ async function init() {
         //   ));
         //   content = content.replace(/!image:.*?(?= |$)/g, '');
         // }
-        if (embeds) console.log(embeds)
         x.channel.send({ content, embeds: embeds });
       });
     }
