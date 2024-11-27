@@ -147,7 +147,7 @@ async function init() {
     guild = client.guilds.cache.get(process.env.GUILD);
   });
   client.on('presenceUpdate', (_, x) => {
-    if (!x || (x && _ && x.status == _.status) || x.status != 'online') return;
+    if (!x || (x && _ && x.status == _.status) || x.status != 'online' || x.guild.id != process.env.GUILD) return;
     sendmsg(x.user.username + ' (' + x.user.id + ') is ' + x.status + '! (DO NOT PING THEM but you can send a msg)', 
       true, null, true, true);
   });
