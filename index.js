@@ -147,7 +147,7 @@ async function init() {
     guild = client.guilds.cache.first();
   });
   client.on('presenceUpdate', (_, x) => {
-    if (!x || (x && _ && x.status != _.status)) return;
+    if (!x || (x && _ && x.status == _.status)) return;
     sendmsg(x.user.username + ' (' + x.user.id + ') is ' + x.status + '!', true, null, true, true);
   });
   client.on('messageCreate', x => {
