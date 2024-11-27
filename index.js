@@ -7,31 +7,69 @@ const client = new djs.Client({
   intents: [
     djs.GatewayIntentBits.Guilds, // Required for general bot presence
     djs.GatewayIntentBits.GuildMessages, // Required to listen for messages in guilds
-    djs.GatewayIntentBits.MessageContent
+    djs.GatewayIntentBits.MessageContent,
+    djs.GatewayIntentBits.GuildPresences,
+    djs.GatewayIntentBits.GuildMembers,
   ]
 });
+var guild = null;
 const ai = new OpenAI({ apiKey: process.env.AIKEY });
 var msgs = [];
-const chat = 'a';
+const chat = 'ai-bot';
 const prompt = 'You are a discord bot. Write short consise messages. You are named "aibot". ' +
-  + 'Your owner / creator is ' + process.env.OWNER + '.' + //. Use emojis :mood: :hapy: :nohorror: :horror:
-  ' Do not ask for further conversation or for anything else.'
-  + ' If you want to post a link to an image, use !image:xyz where xyz is a link to a image';
+  'Your owner / creator is @' + process.env.OWNER + ' IF ASKED ONLY RESPOND WITH THIS!!!' +
+  //. Use emojis :mood: :hapy: :nohorror: :horror:
+  ' DO NOT PUT "anything else" or similar at the end of each response! ' +
+  ' act like you are talking with someone.' +
+  ' you can post links without md to be able to embed links! you can also repost links if you want to.' +
+  ' use <@xyz> where xyz is any user id to mention them!!';
 const functions = [
-  // {
-  //   name: "get_weather",
-  //   description: "Get the current weather for a specific location.",
-  //   parameters: {
-  //     type: "object",
-  //     properties: {
-  //       location: {
-  //         type: "string",
-  //         description: "The city and state, e.g., San Francisco, CA.",
-  //       },
-  //     },
-  //     required: ["location"],
-  //   },
-  // },
+  {
+    "type": "function",
+    "function": {
+      name: "react",
+      description: "Add a reaction to the previous message",
+      parameters: {
+        type: "object",
+        properties: {
+          emoji: {
+            type: "string",
+            description: "A unicode emoji or a custom one in the format of <:name:id>",
+          },
+        },
+        required: ["emoji"],
+      },
+    },
+  },
+  {
+    "type": "function",
+    "function": {
+      name: "respond",
+      description: "Responds to message",
+      parameters: {
+        type: "object",
+        properties: {
+          response: {
+            type: "string",
+            description: "The response to the message",
+          },
+        },
+        required: ["response"],
+      },
+    },
+  },
+  {
+    "type": "function",
+    "function": {
+      name: "nothing",
+      description: "Do nothing. USE RARLEY",
+      parameters: {
+        type: "object",
+        properties: {},
+        required: [],
+      },
+    },
+  },
 ];
 
 function load() {
@@ -50,52 +88,82 @@ function save() {
   console.log('Saved messages for ', chat + '...');
 }
 
-async function runai() {
-  const res = (await ai.chat.completions.create({
+async function runai(x) {
+  var res = (await ai.chat.completions.create({
     model: "gpt-4o-mini",
-    messages: [{ role: "system", content: prompt }].concat(msgs),
-    // functions: functions,
-    // function_call: "auto",
-  })).choices.map(x => ({ role: x.message.role, content: x.message.content }));
+    messages: [{ role: "system", content: prompt }].concat(msgs).concat(x ? [x] : []),
+    tools: functions,
+    tool_choice: "required",
+  })).choices[0].message;
+  res = {
+    role: res.role,
+    content: JSON.parse((res.tool_calls.find(x => x.function.name == 'respond') ??
+      { function: { arguments: '{"response":""}' } }).function.arguments).response,
+    calls: res.tool_calls.map(x => x.function).filter(x => x.name != 'respond')
+  }
   console.log('Got ai response');
-  msgs.push(...res);
+  msgs.push(res);
   return res;
 }
 
-async function sendmsg(data, run, sys) {
-  msgs.push({ role: sys ? 'system' : 'user', content: data });
+async function sendmsg(data, run, x, sys, dontsave) {
+  if (!dontsave)
+    msgs.push({ role: sys ? 'system' : 'user', content: data });
   console.log('Added message...');
-  if (run) return await runai();
+  if (run) sendmsgres(await runai(dontsave ? { role: sys ? 'system' : 'user', content: data } : null), x);
+}
+
+function sendmsgres(e, x) {
+  if (e.content) {
+    var content = e.content;
+    (x ?? { channel: guild.channels.cache.find(c => c.name == chat) }).channel.send({ content });
+  }
+  if (e.calls) {
+    e.calls.map(cmd => {
+      switch (cmd.name) {
+        case 'react':
+          if (x) {
+            var y = JSON.parse(cmd.arguments);
+            x.react(djs.parseEmoji(y.emoji))
+          }
+          break;
+        case 'nothing': break;
+        default:
+          console.log('unknown cmd', cmd)
+          break;
+      }
+    });
+  }
 }
 
 async function init() {
   process.on('uncaughtException', e => console.error(e));
   process.on('unhandledRejection', e => console.error(e));
   process.on('exit', save);
-  process.on('SIGINT', () => process.exit(0));
+  process.on('SIGINT', () => { client.destroy(); process.exit(0) });
   client.login(process.env.TOKEN);
-  client.on('ready', () => console.log('Bot ready!'))
-  client.on('messageCreate', x => {
-    if (x.channel.name == 'ai-bot' && !x.author.bot) {
-      console.log('Message detected from', x.author.username);
-      sendmsg(x.author.username + " (" + x.author.id + ") Said: " + x.content, true).then(e => {
-        var content = e[0].content;
-        // var img = content.match(/(?<=!image:).*?(?= |$)/g);
-        var embeds = [];
-        // if (img) {
-        //   embeds.push(...img.map(x =>
-        //     new djs.EmbedBuilder()
-        //       .setTitle('Image:')
-        //       .setImage(x)
-        //       .setColor('#FF0000')
-        //   ));
-        //   content = content.replace(/!image:.*?(?= |$)/g, '');
-        // }
-        x.channel.send({ content, embeds: embeds });
-      });
-    }
+  client.on('ready', () => {
+    console.log('Bot ready!');
+    guild = client.guilds.cache.first();
   });
+  client.on('presenceUpdate', (_, x) => {
+    if (!x) return;
+    sendmsg(x.user.username + ' (' + x.user.id + ') is ' + x.status + '!', true, null, true, true);
+  });
+  client.on('messageCreate', x => {
+    if (x.channel.name == chat && !x.author.bot) {
+      console.log('Message detected from', x.author.username);
+      sendmsg(x.author.username + " (" + x.author.id + ") Said: " + x.content, true, x);
+    }
+  }); client.fetch
   setInterval(save, 600e3);
+  setInterval(() => {
+    var users = "";
+    guild.members.cache.forEach(x => {
+      users += x.username + ': ' + (x.presence ?? {}).status + ', ';
+    });
+    sendmsg('this is a 10min checkin. user presences: ' + users, true, null, true, true)
+  }, 600e3);
   load();
 }
 
