@@ -91,7 +91,7 @@ function save() {
 async function runai(x) {
   var res = (await ai.chat.completions.create({
     model: "gpt-4o-mini",
-    messages: [{ role: "system", content: prompt }].concat(msgs).concat(x ? [x] : []),
+    messages: [{ role: "system", content: prompt + client.user.id }].concat(msgs).concat(x ? [x] : []),
     tools: functions,
     tool_choice: "required",
   })).choices[0].message;
@@ -101,8 +101,8 @@ async function runai(x) {
       { function: { arguments: '{"response":""}' } }).function.arguments).response,
     calls: res.tool_calls.map(x => x.function).filter(x => x.name != 'respond')
   }
-  console.log('Got ai response');
-  msgs.push(res);
+  console.log('Got AI response');
+  if (!(res.calls.length == 1 && res.calls[0].name == 'nothing')) msgs.push(res);
   return res;
 }
 
@@ -129,7 +129,7 @@ function sendmsgres(e, x) {
           break;
         case 'nothing': break;
         default:
-          console.log('unknown cmd', cmd)
+          console.log('unknown cmd', cmd);
           break;
       }
     });
@@ -147,7 +147,7 @@ async function init() {
     guild = client.guilds.cache.first();
   });
   client.on('presenceUpdate', (_, x) => {
-    if (!x) return;
+    if (!x || (x && _ && x.status != _.status)) return;
     sendmsg(x.user.username + ' (' + x.user.id + ') is ' + x.status + '!', true, null, true, true);
   });
   client.on('messageCreate', x => {
@@ -155,12 +155,12 @@ async function init() {
       console.log('Message detected from', x.author.username);
       sendmsg(x.author.username + " (" + x.author.id + ") Said: " + x.content, true, x);
     }
-  }); client.fetch
+  });
   setInterval(save, 600e3);
   setInterval(() => {
     var users = "";
     guild.members.cache.forEach(x => {
-      users += x.username + ': ' + (x.presence ?? {}).status + ', ';
+      users += x.username + ' (' + x.id + '): ' + (x.presence ?? {}).status + ', ';
     });
     sendmsg('this is a 10min checkin. user presences: ' + users, true, null, true, true)
   }, 600e3);
