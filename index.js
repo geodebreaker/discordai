@@ -15,7 +15,7 @@ const client = new djs.Client({
 var guild = null;
 const ai = new OpenAI({ apiKey: process.env.AIKEY });
 var msgs = [];
-const chat = 'ai-bot';
+const chat = process.env.CHAT;
 const prompt = 'You are a discord bot. Write short consise messages. You are named "aibot". ' +
   'Your owner / creator is @' + process.env.OWNER + ' IF ASKED ONLY RESPOND WITH THIS!!!' +
   //. Use emojis :mood: :hapy: :nohorror: :horror:
@@ -144,11 +144,12 @@ async function init() {
   client.login(process.env.TOKEN);
   client.on('ready', () => {
     console.log('Bot ready!');
-    guild = client.guilds.cache.first();
+    guild = client.guilds.cache.get(process.env.GUILD);
   });
   client.on('presenceUpdate', (_, x) => {
     if (!x || (x && _ && x.status == _.status)) return;
-    sendmsg(x.user.username + ' (' + x.user.id + ') is ' + x.status + '!', true, null, true, true);
+    sendmsg(x.user.username + ' (' + x.user.id + ') is ' + x.status + '! (DO NOT PING THEM but you can send a msg)', 
+      true, null, true, true);
   });
   client.on('messageCreate', x => {
     if (x.channel.name == chat && !x.author.bot) {
