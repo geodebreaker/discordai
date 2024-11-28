@@ -173,7 +173,7 @@ async function sendmsg(data, run, x, sys, dontsave) {
 }
 
 async function getUser(input) {
-  if (/^\d{18}$/.test(input)) {
+  if (/^\d{17,20}$/.test(input)) {
     return await client.users.fetch(input);
   } else {
     const user = client.users.cache.find(u => u.username.toLowerCase() === input.toLowerCase());
@@ -206,7 +206,7 @@ function sendmsgres(e, x) {
           if (x) {
             var y = JSON.parse(cmd.arguments);
             console.log('changed', y.user + "'s nickname to", y.name);
-            (await x.guild.members.fetch((y.user ? await getUser(y.user) : client.user).id))
+            (await x.guild.members.fetch((y.user ? await getUser(y.user) : client.user)?.id))
               .setNickname(y.name);
           }
           break;
@@ -240,7 +240,8 @@ async function init() {
   client.on('messageCreate', x => {
     if ((x.channel.type == 1 || x.channel.name == chat) && !x.author.bot) {
       console.log('Message detected from', x.author.username);
-      sendmsg(x.author.username + " (" + x.author.id + ") Said: " + x.content, true, x);
+      sendmsg(x.author.username + " (" + x.author.id + ") " + (x.channel.type == 1 ? "DM'ed" : "Said") +
+        ": " + x.content, true, x);
     }
   });
   setInterval(save, 600e3);
