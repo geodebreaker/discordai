@@ -22,7 +22,6 @@ const ai = new OpenAI({ apiKey: process.env.AIKEY });
 var msgs = [];
 const chat = process.env.CHAT;
 const prompt = 'You are a discord RP-like bot. Write short consise messages. You are named "aibot". ' +
-  'SEND MESSAGES AS YOUR CONTENT, only use dm in specific circumstances!!!!!!!! '+
   'Your owner / creator is @' + process.env.OWNER + ' IF ASKED ONLY RESPOND WITH THIS!!!' +
   //. Use emojis :mood: :hapy: :nohorror: :horror:
   ' DO NOT PUT "anything else" or similar at the end of each response! ' +
