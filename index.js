@@ -248,9 +248,9 @@ async function init() {
   setInterval(() => {
     var users = "";
     guild.members.cache.forEach(x => {
-      users += x.username + ' (' + x.id + '): ' + (x.presence ?? {}).status + ', ';
+      users += x.username + ' (' + x.id + '), ';
     });
-    sendmsg('this is a 10min checkin. user presences: ' + users, true, null, true, true)
+    sendmsg('this is a 10min checkin. online users (DO NOT PING THEM): ' + users, true, null, true, true)
   }, 600e3);
   load();
 }
